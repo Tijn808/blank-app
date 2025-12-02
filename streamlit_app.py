@@ -1,6 +1,7 @@
 import pandas as pd
+import streamlit as st
 data = pd.read_csv('https://raw.githubusercontent.com/LUCE-Blockchain/Databases-for-teaching/refs/heads/main/Framingham%20Dataset.csv')
-data.head()
+st.write(data.head())
 data_raw = data.copy(deep=True) #so the data keeps it original state
 selected_columns = [
     'AGE', 'SEX', 'TOTCHOL', 'SYSBP', 'DIABP', 'CURSMOKE', 'CIGPDAY', 'BMI',
@@ -9,11 +10,13 @@ selected_columns = [
 ]
 
 df = data[selected_columns]
+st.write(df.head())
+st.write('Make a dataframe with only the columns that are of use to us')
 
-print("\nInformation about the selected_features DataFrame:")
-df.info()
-df.head()
-df.isnull().sum()
+st.write("\nInformation about the selected_features DataFrame:")
+st.text(df.info())
+st.write(df.head())
+st.write(df.isnull().sum())
 from sklearn.model_selection import train_test_split
 
 # Separate features (X) and target (y)
@@ -49,21 +52,23 @@ meaningful_numerical_cols = [col for col in numerical_cols if col not in binary_
 num_plots = len(meaningful_numerical_cols)
 
 # Check if there are any meaningful columns to plot
+
 if num_plots == 0:
-    print("No meaningful numerical columns found to plot after excluding binary ones.")
+    st.write("No meaningful numerical columns found to plot after excluding binary ones.")
 else:
-    fig_height = num_plots * 3  # Adjust height per plot for better visibility
+    fig_height = max(3, num_plots * 3)  # Adjust height per plot for better visibility
+    fig, axes = plt.subplots(nrows=num_plots, ncols=1, figsize=(6, fig_height), constrained_layout=True)
 
-    plt.figure(figsize=(5, fig_height))
+    # if only one subplot, axes is not a list
+    if num_plots == 1:
+        axes = [axes]
 
-    for i, column in enumerate(meaningful_numerical_cols):
-        plt.subplot(num_plots, 1, i + 1) # Create a subplot for each feature
-        sns.boxplot(x=X_train[column])
-        plt.title(f'Box Plot of {column}')
-        plt.xlabel(column)
-        plt.tight_layout() # Adjust layout to prevent overlapping titles/labels
+    for ax, column in zip(axes, meaningful_numerical_cols):
+        sns.boxplot(x=X_train[column], ax=ax)
+        ax.set_title(f'Box Plot of {column}')
+        ax.set_xlabel(column)
 
-    plt.show()
+    st.pyplot(fig)
     columns_to_cap = ['TOTCHOL', 'SYSBP', 'DIABP', 'CIGPDAY', 'BMI', 'GLUCOSE']
 capping_values = {}
 
@@ -98,20 +103,27 @@ num_plots = len(columns_to_cap)
 fig_height = num_plots * 4 # Adjust height per plot for better visibility
 
 print("Box plots for X_train after capping:")
-plt.figure(figsize=(15, fig_height))
-for i, column in enumerate(columns_to_cap):
-    plt.subplot(num_plots, 2, 2*i + 1) # Left column for X_train
-    sns.boxplot(x=X_train[column])
-    plt.title(f'X_train: Box Plot of {column} (Capped)')
-    plt.xlabel(column)
-    
-    plt.subplot(num_plots, 2, 2*i + 2) # Right column for X_test
-    sns.boxplot(x=X_test[column])
-    plt.title(f'X_test: Box Plot of {column} (Capped)')
-    plt.xlabel(column)
+Capped_cols, axes = plt.subplots(nrows=num_plots, ncols=2, figsize=(15, fig_height), constrained_layout=True)
 
-plt.tight_layout()
-plt.show()
+# If num_plots == 1, axes will be 1D; convert to list-of-rows to keep indexing axes[row_idx][col]
+if num_plots == 1:
+    axes = [axes]
+
+    for row_idx, column in enumerate(columns_to_cap):
+        left_ax = axes[row_idx][0]
+        right_ax = axes[row_idx][1]
+
+        sns.boxplot(x=X_train[column], ax=left_ax)
+        left_ax.set_title(f'X_train: Box Plot of {column} (Capped)')
+        left_ax.set_xlabel(column)
+
+        sns.boxplot(x=X_test[column], ax=right_ax)
+        right_ax.set_title(f'X_test: Box Plot of {column} (Capped)')
+        right_ax.set_xlabel(column)
+
+    st.pyplot(Capped_cols)
+variable = st.selectbox('Select' , ['TOTCHOL','SYSBP','DIABP','CIGPDAY','BMI','GLUCOSE'])
+st.pyplot(Capped_cols)
 missing_cols_numeric = ['TOTCHOL', 'CIGPDAY', 'BMI', 'BPMEDS', 'GLUCOSE']
 median_values = {}
 
@@ -167,17 +179,18 @@ if num_plots == 0:
 else:
     fig_height = num_plots * 4  # Adjust height per plot for better visibility
 
-    plt.figure(figsize=(10, fig_height))
+    fig, axes = plt.subplots(nrows=num_plots, ncols=1, figsize=(10, fig_height), constrained_layout=True)
 
-    for i, column in enumerate(meaningful_numerical_cols):
-        plt.subplot(num_plots, 1, i + 1)  # Create a subplot for each feature
-        sns.histplot(x=X_train[column], kde=True) # Use kde=True for density estimation
-        plt.title(f'Distribution of {column} in X_train')
-        plt.xlabel(column)
-        plt.ylabel('Frequency')
+    if num_plots == 1:
+        axes = [axes]
 
-    plt.tight_layout()  # Adjust layout to prevent overlapping titles/labels
-    plt.show()
+    for ax, column in zip(axes, meaningful_numerical_cols):
+        sns.histplot(x=X_train[column], kde=True, ax=ax)
+        ax.set_title(f'Distribution of {column} in X_train')
+        ax.set_xlabel(column)
+        ax.set_ylabel('Frequency')
+
+    st.pyplot(fig)
     import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -191,22 +204,22 @@ df_combined = pd.concat([X_train_reset, y_train_reset], axis=1)
 # Calculate the correlation matrix
 correlation_matrix = df_combined.corr()
 
-# Plot the correlation heatmap
-plt.figure(figsize=(18, 15)) # Adjust figure size for better readability
-sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5)
-plt.title('Correlation Heatmap of Features in X_train and y_train')
-plt.show()
+# Plot the correlation heatmap in Streamlit
+fig_corr, ax_corr = plt.subplots(figsize=(18, 15), constrained_layout=True)
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5, ax=ax_corr)
+ax_corr.set_title('Correlation Heatmap of Features in X_train and y_train')
+st.pyplot(fig_corr)
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
-# 1. Create a count plot for the y_train Series
-plt.figure(figsize=(6, 4))
-sns.countplot(x=y_train)
-plt.title('Distribution of DIABETES in y_train')
-plt.xlabel('DIABETES')
-plt.ylabel('Count')
-plt.show()
+# 1. Create a count plot for the y_train Series (render with Streamlit)
+fig_count, ax_count = plt.subplots(figsize=(6, 4), constrained_layout=True)
+sns.countplot(x=y_train, ax=ax_count)
+ax_count.set_title('Distribution of DIABETES in y_train')
+ax_count.set_xlabel('DIABETES')
+ax_count.set_ylabel('Count')
+st.pyplot(fig_count)
 
 # 2. Define a list named key_numerical_features
 key_numerical_features = ['GLUCOSE', 'BMI', 'SYSBP', 'AGE', 'TOTCHOL']
@@ -220,17 +233,18 @@ df_combined_viz = pd.concat([X_train_reset[key_numerical_features], y_train_rese
 
 # 4. Iterate through each feature in key_numerical_features and create box plots
 num_features = len(key_numerical_features)
-plt.figure(figsize=(10, num_features * 4)) # Adjust figure size dynamically
+fig_kf, axes_kf = plt.subplots(nrows=num_features, ncols=1, figsize=(10, num_features * 4), constrained_layout=True)
 
-for i, feature in enumerate(key_numerical_features):
-    plt.subplot(num_features, 1, i + 1)
-    sns.boxplot(x='DIABETES', y=feature, data=df_combined_viz)
-    plt.title(f'Distribution of {feature} by DIABETES Outcome')
-    plt.xlabel('DIABETES')
-    plt.ylabel(feature)
+if num_features == 1:
+    axes_kf = [axes_kf]
 
-plt.tight_layout()
-plt.show()
+for ax, feature in zip(axes_kf, key_numerical_features):
+    sns.boxplot(x='DIABETES', y=feature, data=df_combined_viz, ax=ax)
+    ax.set_title(f'Distribution of {feature} by DIABETES Outcome')
+    ax.set_xlabel('DIABETES')
+    ax.set_ylabel(feature)
+
+st.pyplot(fig_kf)
 from sklearn.preprocessing import StandardScaler
 
 # Reuse meaningful_numerical_cols from previous step
@@ -274,24 +288,22 @@ y_pred = log_reg_model.predict(X_test)
 y_proba = log_reg_model.predict_proba(X_test)[:, 1] # Probabilities for the positive class
 
 # 3. Print the classification report
-print("Classification Report:")
-print(classification_report(y_test, y_pred))
+st.subheader("Classification Report")
+st.text(classification_report(y_test, y_pred))
 
-# 4. Create and display a confusion matrix
-print("\nConfusion Matrix:")
-fig, ax = plt.subplots(figsize=(8, 6))
-ConfusionMatrixDisplay.from_estimator(log_reg_model, X_test, y_test, cmap=plt.cm.Blues, ax=ax)
-plt.title('Confusion Matrix for Logistic Regression')
-plt.show()
+# 4. Create and display a confusion matrix (render in browser)
+fig_cm, ax_cm = plt.subplots(figsize=(8, 6), constrained_layout=True)
+ConfusionMatrixDisplay.from_estimator(log_reg_model, X_test, y_test, cmap=plt.cm.Blues, ax=ax_cm)
+ax_cm.set_title('Confusion Matrix for Logistic Regression')
+st.pyplot(fig_cm)
 
-# 5. Create and display an ROC curve and calculate ROC-AUC score
-print("\nROC Curve:")
-fig, ax = plt.subplots(figsize=(8, 6))
-RocCurveDisplay.from_estimator(log_reg_model, X_test, y_test, name='Logistic Regression', ax=ax)
-plt.title('ROC Curve for Logistic Regression')
-plt.plot([0,
-1], [0, 1], 'r--') # Plot random guess line
-plt.show()
+# 5. Create and display an ROC curve (render in browser)
+fig_roc, ax_roc = plt.subplots(figsize=(8, 6), constrained_layout=True)
+RocCurveDisplay.from_estimator(log_reg_model, X_test, y_test, name='Logistic Regression', ax=ax_roc)
+ax_roc.set_title('ROC Curve for Logistic Regression')
+ax_roc.plot([0, 1], [0, 1], 'r--') # Plot random guess line
+st.pyplot(fig_roc)
+
 from sklearn.metrics import precision_recall_fscore_support, classification_report, ConfusionMatrixDisplay
 import numpy as np
 import matplotlib.pyplot as plt
@@ -309,9 +321,9 @@ print(f"Using Threshold: {optimal_f1_threshold:.2f}")
 print("\nClassification Report with this Threshold:")
 print(classification_report(y_test, y_pred_optimal, zero_division=0))
 
-# Create and display a confusion matrix for this threshold
-print("\nConfusion Matrix with this Threshold:")
-fig, ax = plt.subplots(figsize=(8, 6))
-ConfusionMatrixDisplay.from_predictions(y_test, y_pred_optimal, cmap=plt.cm.Blues, ax=ax)
-plt.title(f'Confusion Matrix for Logistic Regression (Threshold={optimal_f1_threshold:.2f})')
-plt.show()
+# Create and display a confusion matrix for this threshold (render in browser)
+fig_thresh, ax_thresh = plt.subplots(figsize=(8, 6), constrained_layout=True)
+ConfusionMatrixDisplay.from_predictions(y_test, y_pred_optimal, cmap=plt.cm.Blues, ax=ax_thresh)
+ax_thresh.set_title(f'Confusion Matrix for Logistic Regression (Threshold={optimal_f1_threshold:.2f})')
+st.pyplot(fig_thresh)
+
