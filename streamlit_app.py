@@ -1,22 +1,30 @@
 import pandas as pd
 import streamlit as st
+
+st.markdown("##  Research Questions")
+
+st.markdown("### Initial Research Question")
+st.info('Can we predict the onset of diabetes in the Framingham Heart Study population using baseline demographic, lifestyle, and clinical variables?')
+
+st.markdown("### Refined Research Question")
+st.info('Can we identify individuals currently positive for or at high risk of diabetes within the Framingham Heart Study population, using readily available baseline demographic, lifestyle, and clinical variables such as age, sex, BMI, blood pressure, cholesterol, glucose, and smoking status?')
+
 data = pd.read_csv('https://raw.githubusercontent.com/LUCE-Blockchain/Databases-for-teaching/refs/heads/main/Framingham%20Dataset.csv')
-st.write(data.head())
+data.head()
 data_raw = data.copy(deep=True) #so the data keeps it original state
 selected_columns = [
     'AGE', 'SEX', 'TOTCHOL', 'SYSBP', 'DIABP', 'CURSMOKE', 'CIGPDAY', 'BMI',
     'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP', 'GLUCOSE',
     'HYPERTEN', 'DIABETES'
 ]
+st.markdown("## Selected Data Set")
 
 df = data[selected_columns]
-st.write(df.head())
-st.write('Make a dataframe with only the columns that are of use to us')
+st.dataframe(df, use_container_width=True, height=300)
+st.write('Selected columns are: age, sex, totchol, sysbp, diabp, cursmoke, cigpday, BMI, bpmeds, prevchd, prevap, prevmi, prevstrk, prevhyp, glucose, hyperten & diabetes')
 
-st.write("\nInformation about the selected_features DataFrame:")
-st.text(df.info())
-st.write(df.head())
-st.write(df.isnull().sum())
+st.markdown('### Missing Values')
+st.dataframe(df.isnull().sum(), use_container_width=True, height=300)
 from sklearn.model_selection import train_test_split
 
 # Separate features (X) and target (y)
@@ -48,26 +56,21 @@ binary_cols = [col for col in numerical_cols if X_train[col].dropna().isin([0, 1
 # Filter out binary columns for box plotting
 meaningful_numerical_cols = [col for col in numerical_cols if col not in binary_cols]
 
-# Set up the plotting area dynamically based on the number of meaningful columns
-num_plots = len(meaningful_numerical_cols)
-
 # Check if there are any meaningful columns to plot
-
-if num_plots == 0:
+if len(meaningful_numerical_cols) == 0:
     st.write("No meaningful numerical columns found to plot after excluding binary ones.")
 else:
-    fig_height = max(3, num_plots * 3)  # Adjust height per plot for better visibility
-    fig, axes = plt.subplots(nrows=num_plots, ncols=1, figsize=(6, fig_height), constrained_layout=True)
-
-    # if only one subplot, axes is not a list
-    if num_plots == 1:
-        axes = [axes]
-
-    for ax, column in zip(axes, meaningful_numerical_cols):
-        sns.boxplot(x=X_train[column], ax=ax)
-        ax.set_title(f'Box Plot of {column}')
-        ax.set_xlabel(column)
-
+    st.markdown("### Box Plots")
+    
+    # Add a selectbox to choose which column to plot
+    selected_column = st.selectbox("Select a column to see the uncapped boxplots:", meaningful_numerical_cols)
+    
+    # Create boxplot for the selected column
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.boxplot(x=X_train[selected_column], ax=ax)
+    ax.set_title(f'Box Plot of {selected_column}', fontsize=14, fontweight='bold')
+    ax.set_xlabel(selected_column, fontsize=12)
+    
     st.pyplot(fig)
     columns_to_cap = ['TOTCHOL', 'SYSBP', 'DIABP', 'CIGPDAY', 'BMI', 'GLUCOSE']
 capping_values = {}
@@ -92,38 +95,26 @@ for col in columns_to_cap:
 
 print("\nX_test after capping outliers (first 5 rows of capped columns):")
 print(X_test[columns_to_cap].head())
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-# Columns for which outliers were capped
-columns_to_cap = ['TOTCHOL', 'SYSBP', 'DIABP', 'CIGPDAY', 'BMI', 'GLUCOSE']
+st.markdown("### Box Plots with Capped Outliers")
 
-# Set up the plotting area dynamically based on the number of columns
-num_plots = len(columns_to_cap)
-fig_height = num_plots * 4 # Adjust height per plot for better visibility
+# Add a selectbox to choose which capped column to plot
+selected_capped_column = st.selectbox("Select a column to see the capped boxplots:", columns_to_cap)
 
-print("Box plots for X_train after capping:")
-Capped_cols, axes = plt.subplots(nrows=num_plots, ncols=2, figsize=(15, fig_height), constrained_layout=True)
+# Create side-by-side boxplots for the selected column
+fig, axes = plt.subplots(1, 2, figsize=(15, 5))
 
-# If num_plots == 1, axes will be 1D; convert to list-of-rows to keep indexing axes[row_idx][col]
-if num_plots == 1:
-    axes = [axes]
+sns.boxplot(x=X_train[selected_capped_column], ax=axes[0])
+axes[0].set_title(f'X_train: Box Plot of {selected_capped_column} (Capped)', fontsize=12, fontweight='bold')
+axes[0].set_xlabel(selected_capped_column)
 
-    for row_idx, column in enumerate(columns_to_cap):
-        left_ax = axes[row_idx][0]
-        right_ax = axes[row_idx][1]
+sns.boxplot(x=X_test[selected_capped_column], ax=axes[1])
+axes[1].set_title(f'X_test: Box Plot of {selected_capped_column} (Capped)', fontsize=12, fontweight='bold')
+axes[1].set_xlabel(selected_capped_column)
 
-        sns.boxplot(x=X_train[column], ax=left_ax)
-        left_ax.set_title(f'X_train: Box Plot of {column} (Capped)')
-        left_ax.set_xlabel(column)
+plt.tight_layout()
+st.pyplot(fig)
 
-        sns.boxplot(x=X_test[column], ax=right_ax)
-        right_ax.set_title(f'X_test: Box Plot of {column} (Capped)')
-        right_ax.set_xlabel(column)
-
-    st.pyplot(Capped_cols)
-variable = st.selectbox('Select' , ['TOTCHOL','SYSBP','DIABP','CIGPDAY','BMI','GLUCOSE'])
-st.pyplot(Capped_cols)
 missing_cols_numeric = ['TOTCHOL', 'CIGPDAY', 'BMI', 'BPMEDS', 'GLUCOSE']
 median_values = {}
 
@@ -170,26 +161,22 @@ binary_cols = [col for col in numerical_cols if X_train[col].dropna().isin([0, 1
 # Filter out binary columns for histogram plotting
 meaningful_numerical_cols = [col for col in numerical_cols if col not in binary_cols]
 
-# Set up the plotting area dynamically based on the number of meaningful columns
-num_plots = len(meaningful_numerical_cols)
-
 # Check if there are any meaningful columns to plot
-if num_plots == 0:
-    print("No meaningful numerical columns found to plot histograms for after excluding binary ones.")
+if len(meaningful_numerical_cols) == 0:
+    st.write("No meaningful numerical columns found to plot distributions for after excluding binary ones.")
 else:
-    fig_height = num_plots * 4  # Adjust height per plot for better visibility
-
-    fig, axes = plt.subplots(nrows=num_plots, ncols=1, figsize=(10, fig_height), constrained_layout=True)
-
-    if num_plots == 1:
-        axes = [axes]
-
-    for ax, column in zip(axes, meaningful_numerical_cols):
-        sns.histplot(x=X_train[column], kde=True, ax=ax)
-        ax.set_title(f'Distribution of {column} in X_train')
-        ax.set_xlabel(column)
-        ax.set_ylabel('Frequency')
-
+    st.markdown("### Distributions")
+    
+    # Add a selectbox to choose which column to plot
+    selected_dist_column = st.selectbox("Select a column to see the distribution:", meaningful_numerical_cols)
+    
+    # Create histogram for the selected column
+    fig, ax = plt.subplots(figsize=(10, 5))
+    sns.histplot(x=X_train[selected_dist_column], kde=True, ax=ax)
+    ax.set_title(f'Distribution of {selected_dist_column} in X_train', fontsize=14, fontweight='bold')
+    ax.set_xlabel(selected_dist_column, fontsize=12)
+    ax.set_ylabel('Frequency', fontsize=12)
+    
     st.pyplot(fig)
     import matplotlib.pyplot as plt
 import seaborn as sns
@@ -201,6 +188,7 @@ X_train_reset = X_train.reset_index(drop=True)
 
 df_combined = pd.concat([X_train_reset, y_train_reset], axis=1)
 
+st.markdown('## Correlation Heatmap')
 # Calculate the correlation matrix
 correlation_matrix = df_combined.corr()
 
