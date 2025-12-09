@@ -27,6 +27,12 @@ st.markdown('### Missing Values')
 st.dataframe(df.isnull().sum(), use_container_width=True, height=300)
 from sklearn.model_selection import train_test_split
 
+st.markdown('## Imputation & Outliers')
+
+
+with st.expander ('### Imputation'):
+    st.info('We used iterative imputation to fill for the missing values.')
+
 # Separate features (X) and target (y)
 X = df.drop('DIABETES', axis=1)
 y = df['DIABETES']
@@ -60,30 +66,37 @@ meaningful_numerical_cols = [col for col in numerical_cols if col not in binary_
 if len(meaningful_numerical_cols) == 0:
     st.write("No meaningful numerical columns found to plot after excluding binary ones.")
 else:
-    st.markdown("### Box Plots")
-    
-    # Add a selectbox to choose which column to plot
-    selected_column = st.selectbox("Select a column to see the uncapped boxplots:", meaningful_numerical_cols)
-    
-    # Create boxplot for the selected column
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.boxplot(x=X_train[selected_column], ax=ax)
-    ax.set_title(f'Box Plot of {selected_column}', fontsize=14, fontweight='bold')
-    ax.set_xlabel(selected_column, fontsize=12)
-    
-    st.pyplot(fig)
-    columns_to_cap = ['TOTCHOL', 'SYSBP', 'DIABP', 'CIGPDAY', 'BMI', 'GLUCOSE']
-capping_values = {}
+    with st.expander("### Outliers"):
 
-for col in columns_to_cap:
-    # Calculate the 99th percentile for the current column in X_train
-    percentile_99 = X_train[col].quantile(0.99)
+        st.markdown("#### Box Plots")
+
+        # Add a selectbox to choose which column to plot
+        selected_column = st.selectbox(
+            "Select a column to see the uncapped boxplots:",
+            meaningful_numerical_cols
+        )
+
+        # Create boxplot for the selected column
+        fig, ax = plt.subplots(figsize=(8, 5))
+        sns.boxplot(x=X_train[selected_column], ax=ax)
+        ax.set_title(f'Box Plot of {selected_column}', fontsize=14, fontweight='bold')
+        ax.set_xlabel(selected_column, fontsize=12)
+
+        st.pyplot(fig)
+    
+        st.pyplot(fig)
+        columns_to_cap = ['TOTCHOL', 'SYSBP', 'DIABP', 'CIGPDAY', 'BMI', 'GLUCOSE']
+        capping_values = {}
+
+        for col in columns_to_cap:
+        # Calculate the 99th percentile for the current column in X_train
+        percentile_99 = X_train[col].quantile(0.99)
     
     # Store the 99th percentile value
-    capping_values[col] = percentile_99
+        capping_values[col] = percentile_99
     
     # Cap the values in X_train at the 99th percentile
-    X_train[col] = X_train[col].clip(upper=percentile_99)
+        X_train[col] = X_train[col].clip(upper=percentile_99)
 
 print("99th percentile capping values:")
 print(capping_values)
@@ -96,7 +109,7 @@ for col in columns_to_cap:
 print("\nX_test after capping outliers (first 5 rows of capped columns):")
 print(X_test[columns_to_cap].head())
 
-st.markdown("### Box Plots with Capped Outliers")
+st.markdown("#### Box Plots with Capped Outliers")
 
 # Add a selectbox to choose which capped column to plot
 selected_capped_column = st.selectbox("Select a column to see the capped boxplots:", columns_to_cap)
