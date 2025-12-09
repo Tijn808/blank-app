@@ -189,10 +189,8 @@ X_train_reset = X_train.reset_index(drop=True)
 df_combined = pd.concat([X_train_reset, y_train_reset], axis=1)
 
 st.markdown('## Correlation Heatmap')
-# Calculate the correlation matrix
 correlation_matrix = df_combined.corr()
 
-# Plot the correlation heatmap in Streamlit
 fig_corr, ax_corr = plt.subplots(figsize=(18, 15), constrained_layout=True)
 sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5, ax=ax_corr)
 ax_corr.set_title('Correlation Heatmap of Features in X_train and y_train')
@@ -202,6 +200,7 @@ import seaborn as sns
 import pandas as pd
 
 # 1. Create a count plot for the y_train Series (render with Streamlit)
+st.markdown('### Distribution of Diabetes in Training Data')
 fig_count, ax_count = plt.subplots(figsize=(6, 4), constrained_layout=True)
 sns.countplot(x=y_train, ax=ax_count)
 ax_count.set_title('Distribution of DIABETES in y_train')
@@ -209,30 +208,31 @@ ax_count.set_xlabel('DIABETES')
 ax_count.set_ylabel('Count')
 st.pyplot(fig_count)
 
-# 2. Define a list named key_numerical_features
 key_numerical_features = ['GLUCOSE', 'BMI', 'SYSBP', 'AGE', 'TOTCHOL']
 
-# 3. Create a temporary DataFrame by concatenating X_train and y_train
-# Reset index for both X_train and y_train to ensure proper alignment
+# Reset indices to align X_train and y_train
 X_train_reset = X_train.reset_index(drop=True)
 y_train_reset = y_train.reset_index(drop=True)
 
+# Combine features and target into a single DataFrame
 df_combined_viz = pd.concat([X_train_reset[key_numerical_features], y_train_reset], axis=1)
 
-# 4. Iterate through each feature in key_numerical_features and create box plots
-num_features = len(key_numerical_features)
-fig_kf, axes_kf = plt.subplots(nrows=num_features, ncols=1, figsize=(10, num_features * 4), constrained_layout=True)
+# Streamlit selectbox to choose a feature
+selected_feature = st.selectbox(
+    "Select a feature to see:",
+    key_numerical_features
+)
 
-if num_features == 1:
-    axes_kf = [axes_kf]
+# Plot only the selected feature
+fig, ax = plt.subplots(figsize=(10, 4))
+sns.boxplot(x='DIABETES', y=selected_feature, data=df_combined_viz, ax=ax)
+ax.set_title(f'Distribution of {selected_feature} by DIABETES Outcome')
+ax.set_xlabel('DIABETES')
+ax.set_ylabel(selected_feature)
 
-for ax, feature in zip(axes_kf, key_numerical_features):
-    sns.boxplot(x='DIABETES', y=feature, data=df_combined_viz, ax=ax)
-    ax.set_title(f'Distribution of {feature} by DIABETES Outcome')
-    ax.set_xlabel('DIABETES')
-    ax.set_ylabel(feature)
+# Display the plot in Streamlit
+st.pyplot(fig)
 
-st.pyplot(fig_kf)
 from sklearn.preprocessing import StandardScaler
 
 # Reuse meaningful_numerical_cols from previous step
@@ -276,16 +276,24 @@ y_pred = log_reg_model.predict(X_test)
 y_proba = log_reg_model.predict_proba(X_test)[:, 1] # Probabilities for the positive class
 
 # 3. Print the classification report
-st.subheader("Classification Report")
-st.text(classification_report(y_test, y_pred))
+st.markdown('## Logistic Regression')
+st.markdown('### Classification Report')
+
+# Convert classification report to a table
+from sklearn.metrics import classification_report
+report = classification_report(y_test, y_pred, output_dict=True)
+report_df = pd.DataFrame(report).transpose()
+st.dataframe(report_df, use_container_width=True, height=210)
 
 # 4. Create and display a confusion matrix (render in browser)
+st.markdown('### Confusion Matrix')
 fig_cm, ax_cm = plt.subplots(figsize=(8, 6), constrained_layout=True)
 ConfusionMatrixDisplay.from_estimator(log_reg_model, X_test, y_test, cmap=plt.cm.Blues, ax=ax_cm)
 ax_cm.set_title('Confusion Matrix for Logistic Regression')
 st.pyplot(fig_cm)
 
 # 5. Create and display an ROC curve (render in browser)
+st.markdown('### ROC Curve')
 fig_roc, ax_roc = plt.subplots(figsize=(8, 6), constrained_layout=True)
 RocCurveDisplay.from_estimator(log_reg_model, X_test, y_test, name='Logistic Regression', ax=ax_roc)
 ax_roc.set_title('ROC Curve for Logistic Regression')
@@ -296,6 +304,7 @@ from sklearn.metrics import precision_recall_fscore_support, classification_repo
 import numpy as np
 import matplotlib.pyplot as plt
 
+st.markdown('## Logistic Regression with Threshold')
 # Get probabilities for the positive class (class 1)
 y_proba = log_reg_model.predict_proba(X_test)[:, 1]
 
@@ -305,11 +314,15 @@ optimal_f1_threshold = 0.91 # Using the previously identified optimal F1-score t
 # Classify predictions based on this specific threshold
 y_pred_optimal = (y_proba >= optimal_f1_threshold).astype(int)
 
-print(f"Using Threshold: {optimal_f1_threshold:.2f}")
-print("\nClassification Report with this Threshold:")
-print(classification_report(y_test, y_pred_optimal, zero_division=0))
+st.markdown(f'### Classification Report with Threshold={optimal_f1_threshold:.2f}')
+
+# Convert classification report to a table
+report_thresh = classification_report(y_test, y_pred_optimal, zero_division=0, output_dict=True)
+report_thresh_df = pd.DataFrame(report_thresh).transpose()
+st.dataframe(report_thresh_df, use_container_width=True, height=210)
 
 # Create and display a confusion matrix for this threshold (render in browser)
+st.markdown('### Confusion Matrix with Threshold')
 fig_thresh, ax_thresh = plt.subplots(figsize=(8, 6), constrained_layout=True)
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred_optimal, cmap=plt.cm.Blues, ax=ax_thresh)
 ax_thresh.set_title(f'Confusion Matrix for Logistic Regression (Threshold={optimal_f1_threshold:.2f})')
